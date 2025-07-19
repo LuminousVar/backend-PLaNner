@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Level {
+  id_level   Int      @id @default(autoincrement())
+  nama_level String   @db.VarChar(50)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  users      User[]
+
+  @@map("level")
+}
+
+model User {
+  id_user    Int      @id @default(autoincrement())
+  username   String   @unique @db.VarChar(191)
+  password   String   @db.VarChar(255)
+  nama_user  String   @db.VarChar(100)
+  id_level   Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  level      Level        @relation(fields: [id_level], references: [id_level])
+  pembayaran Pembayaran[]
+
+  @@map("user")
+}
+
+model Tarif {
+  id_tarif     Int         @id @default(autoincrement())
+  daya         Int
+  tarif_perkwh Float
+
+  pelanggan Pelanggan[]
+
+  @@map("tarif")
+}
+
+model Pelanggan {
+  id_pelanggan   Int    @id @default(autoincrement())
+  username       String @unique @db.VarChar(50)
+  password       String @db.VarChar(255)
+  nomor_kwh      String @unique @db.VarChar(191)
+  nama_pelanggan String @db.VarChar(100)
+  alamat         String @db.VarChar(255)
+  id_tarif       Int
+
+  tarif      Tarif        @relation(fields: [id_tarif], references: [id_tarif])
+  penggunaan Penggunaan[]
+  tagihan    Tagihan[]
+  pembayaran Pembayaran[]
+
+  @@map("pelanggan")
+}
+
+model Penggunaan {
+  id_penggunaan Int    @id @default(autoincrement())
+  id_pelanggan  Int
+  bulan         String @db.VarChar(191)
+  tahun         String @db.VarChar(191)
+  meter_awal    Int
+  meter_akhir   Int
+
+  pelanggan Pelanggan @relation(fields: [id_pelanggan], references: [id_pelanggan])
+  tagihan   Tagihan[]
+
+  @@map("penggunaan")
+}
+
+model Tagihan {
+  id_tagihan    Int    @id @default(autoincrement())
+  id_penggunaan Int
+  id_pelanggan  Int
+  bulan         String @db.VarChar(20)
+  tahun         String @db.VarChar(191)
+  jumlah_meter  Float
+  status        String @default("Belum Lunas") @db.VarChar(191)
+
+  penggunaan Penggunaan   @relation(fields: [id_penggunaan], references: [id_penggunaan])
+  pelanggan  Pelanggan    @relation(fields: [id_pelanggan], references: [id_pelanggan])
+  pembayaran Pembayaran[]
+
+  @@map("tagihan")
+}
+
+model Pembayaran {
+  id_pembayaran      Int      @id @default(autoincrement())
+  id_tagihan         Int
+  id_pelanggan       Int
+  tanggal_pembayaran DateTime @default(now())
+  bulan_bayar        String   @db.VarChar(191)
+  biaya_admin        Float
+  total_bayar        Float
+  id_user            Int
+
+  tagihan   Tagihan   @relation(fields: [id_tagihan], references: [id_tagihan])
+  pelanggan Pelanggan @relation(fields: [id_pelanggan], references: [id_pelanggan])
+  user      User      @relation(fields: [id_user], references: [id_user])
+
+  @@map("pembayaran")
+}
