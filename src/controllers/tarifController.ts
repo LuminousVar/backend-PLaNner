@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import prisma from "../../prisma/client";
 import { MESSAGES, HTTP_STATUS } from "../constants/messages";
-import { adminOnlyMiddleware, jwtPlugin } from "../middleware/authMiddleware";
+import { authMiddleware } from "../middleware/authMiddleware";
 import type {
   Tarif,
   CreateTarifRequest,
@@ -11,26 +11,24 @@ import type {
 import type { ApiResponse, PaginationQuery } from "../constants/common";
 
 export const tarifController = new Elysia({ prefix: "/api" })
-  .use(jwtPlugin)
 
   .get("/tarif", async ({ query, set }): Promise<ApiResponse<Tarif[]>> => {
     try {
       const { page = 1, limit = 10, search } = query as PaginationQuery;
       const skip = (page - 1) * limit;
 
-      // Fix: Untuk field number, gunakan equals atau range, bukan contains
       let where = {};
 
       if (search) {
         const searchNum = parseInt(search);
         if (!isNaN(searchNum)) {
-          // Jika search adalah number, cari berdasarkan daya yang sama
           where = {
             OR: [{ daya: searchNum }, { tarif_perkwh: searchNum }],
           };
         } else {
-          // Jika search bukan number, return empty result
-          where = { daya: -1 }; // Impossible condition
+          where = {
+            OR: [{ daya: { equals: 0 } }],
+          };
         }
       }
 
@@ -95,9 +93,9 @@ export const tarifController = new Elysia({ prefix: "/api" })
     }
   })
 
-  .group("/tarif", (app) =>
+  .group("/admin/tarif", (app) =>
     app
-      .use(adminOnlyMiddleware)
+      .use(authMiddleware)
 
       .post("/", async ({ body, set }): Promise<TarifResponse> => {
         try {
@@ -112,7 +110,6 @@ export const tarifController = new Elysia({ prefix: "/api" })
             };
           }
 
-          // Validate daya is positive number
           if (daya <= 0) {
             set.status = HTTP_STATUS.BAD_REQUEST;
             return {
@@ -122,7 +119,6 @@ export const tarifController = new Elysia({ prefix: "/api" })
             };
           }
 
-          // Validate tarif_perkwh is positive number
           if (tarif_perkwh <= 0) {
             set.status = HTTP_STATUS.BAD_REQUEST;
             return {
@@ -132,7 +128,6 @@ export const tarifController = new Elysia({ prefix: "/api" })
             };
           }
 
-          // Check if tarif with same daya already exists
           const existingTarif = await prisma.tarif.findFirst({
             where: { daya },
           });
@@ -186,7 +181,6 @@ export const tarifController = new Elysia({ prefix: "/api" })
             };
           }
 
-          // Validate numbers if provided
           if (daya !== undefined && daya <= 0) {
             set.status = HTTP_STATUS.BAD_REQUEST;
             return {
@@ -205,7 +199,6 @@ export const tarifController = new Elysia({ prefix: "/api" })
             };
           }
 
-          // Check if new daya already exists (if daya is being updated)
           if (daya && daya !== existingTarif.daya) {
             const duplicateTarif = await prisma.tarif.findFirst({
               where: {
@@ -263,7 +256,6 @@ export const tarifController = new Elysia({ prefix: "/api" })
             };
           }
 
-          // Check if tarif is being used by any pelanggan
           const tarifInUse = await prisma.pelanggan.findFirst({
             where: { id_tarif: parseInt(id) },
           });

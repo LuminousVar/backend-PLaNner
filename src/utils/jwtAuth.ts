@@ -1,4 +1,5 @@
 import { jwt } from "@elysiajs/jwt";
+import jsonwebtoken from "jsonwebtoken";
 
 interface JWTPayload {
   id: number;
@@ -15,6 +16,8 @@ const jwtConfig = {
   secret: process.env.JWT_SECRET || "luminousv-secret-be-planner",
   exp: process.env.JWT_EXPIRES_IN || "24h",
 };
+
+const JWT_SECRET = process.env.JWT_SECRET || "luminousv-secret-be-planner";
 
 const createJWTPayload = (user: {
   id: number;
@@ -58,12 +61,38 @@ const isValidJWTPayload = (payload: any): payload is JWTPayload => {
   );
 };
 
+// Generate JWT token
+const generateToken = (payload: {
+  id: number;
+  username: string;
+  role: string;
+  level?: string;
+}) => {
+  return jsonwebtoken.sign(payload, JWT_SECRET, { expiresIn: "24h" });
+};
+
+// Verify JWT token - FUNCTION YANG HILANG
+const verifyToken = (token: string): JWTPayload | null => {
+  try {
+    const payload = jsonwebtoken.verify(token, JWT_SECRET) as any;
+    if (isValidJWTPayload(payload)) {
+      return payload as JWTPayload;
+    }
+    return null;
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return null;
+  }
+};
+
 export {
   jwtConfig,
   createJWTPayload,
   cookieConfig,
   extractBearerToken,
   isValidJWTPayload,
+  generateToken,
+  verifyToken,
   JWTPayload,
   jwt,
 };
