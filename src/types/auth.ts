@@ -20,7 +20,7 @@ interface AuthResponse {
     id: number;
     username: string;
     name: string;
-    role: "admin" | "client";
+    role: "admin" | "customer";
     level?: string;
     nomor_kwh?: string;
   };

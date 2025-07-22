@@ -8,6 +8,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev --name init",
+    "db:reset": "prisma migrate reset --force --skip-seed",
     "db:seed": "bun run prisma/seed.ts"
   },
   "dependencies": {
