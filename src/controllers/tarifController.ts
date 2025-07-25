@@ -36,7 +36,7 @@ export const tarifController = new Elysia({ prefix: "/api" })
         prisma.tarif.findMany({
           where,
           skip,
-          take: limit,
+          // take: limit,
           orderBy: { daya: "asc" },
         }),
         prisma.tarif.count({ where }),

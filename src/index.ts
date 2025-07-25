@@ -3,8 +3,14 @@ import cors from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import routes from "./routes";
 
-const app = new Elysia()
-  .use(cors())
+const app = new Elysia();
+app
+  .use(
+    cors({
+      origin: ["http://localhost:5173", "http://localhost:5100"],
+      credentials: true,
+    })
+  )
   .use(
     swagger({
       documentation: {

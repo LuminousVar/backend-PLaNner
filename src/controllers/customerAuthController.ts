@@ -9,6 +9,99 @@ const JWT_SECRET = process.env.JWT_SECRET || "luminosv-secret";
 
 export const customerController = new Elysia({ prefix: "/api/customer" })
 
+  // Tambahkan SEBELUM .post("/register", ...) yang sudah ada
+  .post("/register-public", async ({ body, set }) => {
+    try {
+      const {
+        username,
+        password,
+        nama_pelanggan,
+        nomor_kwh,
+        alamat,
+        id_tarif,
+      } = body as {
+        username: string;
+        password: string;
+        nama_pelanggan: string;
+        nomor_kwh: string;
+        alamat: string;
+        id_tarif: number;
+      };
+
+      // Validation
+      if (
+        !username ||
+        !password ||
+        !nama_pelanggan ||
+        !nomor_kwh ||
+        !alamat ||
+        !id_tarif
+      ) {
+        set.status = HTTP_STATUS.BAD_REQUEST;
+        return { success: false, message: "Semua field harus diisi" };
+      }
+
+      if (password.length < 6) {
+        set.status = HTTP_STATUS.BAD_REQUEST;
+        return { success: false, message: "Password minimal 6 karakter" };
+      }
+
+      // Check existing customer
+      const existingCustomer = await prisma.pelanggan.findFirst({
+        where: {
+          OR: [{ username }, { nomor_kwh }],
+        },
+      });
+
+      if (existingCustomer) {
+        set.status = HTTP_STATUS.CONFLICT;
+        return {
+          success: false,
+          message: "Username atau nomor KWH sudah digunakan",
+        };
+      }
+
+      // Check tarif exists
+      const tarif = await prisma.tarif.findUnique({ where: { id_tarif } });
+      if (!tarif) {
+        set.status = HTTP_STATUS.BAD_REQUEST;
+        return { success: false, message: "Tarif tidak ditemukan" };
+      }
+
+      // Create customer
+      const hashedPassword = await hashPassword(password);
+      const newCustomer = await prisma.pelanggan.create({
+        data: {
+          username,
+          password: hashedPassword,
+          nama_pelanggan,
+          nomor_kwh,
+          alamat,
+          id_tarif,
+        },
+        include: { tarif: true },
+      });
+
+      set.status = HTTP_STATUS.CREATED;
+      return {
+        success: true,
+        message: "Customer berhasil didaftarkan",
+        data: {
+          id: newCustomer.id_pelanggan,
+          username: newCustomer.username,
+          nama_pelanggan: newCustomer.nama_pelanggan,
+          nomor_kwh: newCustomer.nomor_kwh,
+          alamat: newCustomer.alamat,
+          tarif: newCustomer.tarif,
+        },
+      };
+    } catch (error) {
+      console.error("Customer register error:", error);
+      set.status = HTTP_STATUS.INTERNAL_SERVER_ERROR;
+      return { success: false, message: "Terjadi kesalahan server" };
+    }
+  })
+
   // Register Customer (untuk admin yang menambah customer)
   .post("/register", async ({ body, cookie, set }) => {
     try {
