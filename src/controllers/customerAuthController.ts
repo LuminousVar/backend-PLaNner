@@ -458,6 +458,62 @@ export const customerController = new Elysia({ prefix: "/api/customer" })
     }
   })
 
+  // Get Customer Payments
+  .get("/payment", async ({ cookie, set, query }) => {
+    try {
+      const token = cookie.auth.value;
+      if (!token) {
+        set.status = HTTP_STATUS.UNAUTHORIZED;
+        return { success: false, message: "Token tidak ditemukan" };
+      }
+
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      if (decoded.role !== "customer") {
+        set.status = HTTP_STATUS.UNAUTHORIZED;
+        return { success: false, message: "Akses ditolak" };
+      }
+
+      // Optional: filter by status, bulan, tahun, dsb.
+      const { status, bulan, tahun } = query as {
+        status?: string;
+        bulan?: string;
+        tahun?: string;
+      };
+
+      const whereClause: any = {
+        id_pelanggan: decoded.id,
+      };
+      if (status) whereClause.status = status;
+      if (bulan) whereClause.bulan = bulan;
+      if (tahun) whereClause.tahun = tahun;
+
+      const payments = await prisma.pembayaran.findMany({
+        where: whereClause,
+        include: {
+          tagihan: {
+            include: {
+              penggunaan: true,
+              pelanggan: {
+                include: { tarif: true },
+              },
+            },
+          },
+        },
+        orderBy: { id_pembayaran: "desc" },
+      });
+
+      return {
+        success: true,
+        message: "Data pembayaran berhasil diambil",
+        data: payments,
+      };
+    } catch (error) {
+      console.error("Get customer payment error:", error);
+      set.status = HTTP_STATUS.INTERNAL_SERVER_ERROR;
+      return { success: false, message: "Terjadi kesalahan server" };
+    }
+  })
+
   // Logout
   .post("/logout", ({ cookie, set }) => {
     try {
