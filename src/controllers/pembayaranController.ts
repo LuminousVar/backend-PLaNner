@@ -710,28 +710,170 @@ export const pembayaranController = new Elysia({ prefix: "/api" })
   })
 
   // New endpoint for customer to make payment
-  .post("/customer/pembayaran", async ({ cookie, set, body }) => {
+  // .post("/customer/pembayaran", async ({ cookie, set, body }) => {
+  //   try {
+  //     const token = cookie.auth.value;
+
+  //     if (!token) {
+  //       set.status = HTTP_STATUS.UNAUTHORIZED;
+  //       return {
+  //         success: false,
+  //         message: "Token tidak ditemukan",
+  //       };
+  //     }
+
+  //     const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+  //     if (decoded.role !== "client") {
+  //       set.status = HTTP_STATUS.UNAUTHORIZED;
+  //       return {
+  //         success: false,
+  //         message: MESSAGES.ERROR.UNAUTHORIZED,
+  //       };
+  //     }
+
+  //     const { id_tagihan, metode_pembayaran = "Transfer Bank" } =
+  //       body as CustomerPaymentRequest;
+
+  //     if (!id_tagihan) {
+  //       set.status = HTTP_STATUS.BAD_REQUEST;
+  //       return {
+  //         success: false,
+  //         message: "ID Tagihan harus diisi",
+  //         error: "Validation failed",
+  //       };
+  //     }
+
+  //     // Check if tagihan exists, belongs to customer, and not paid yet
+  //     const tagihan = await prisma.tagihan.findFirst({
+  //       where: {
+  //         id_tagihan,
+  //         id_pelanggan: decoded.id, // Ensure customer can only pay their own bill
+  //       },
+  //       include: {
+  //         penggunaan: true,
+  //         pelanggan: {
+  //           include: {
+  //             tarif: true,
+  //           },
+  //         },
+  //       },
+  //     });
+
+  //     if (!tagihan) {
+  //       set.status = HTTP_STATUS.NOT_FOUND;
+  //       return {
+  //         success: false,
+  //         message: "Tagihan tidak ditemukan atau bukan milik Anda",
+  //         error: "Tagihan not found",
+  //       };
+  //     }
+
+  //     if (tagihan.status === "Lunas") {
+  //       set.status = HTTP_STATUS.BAD_REQUEST;
+  //       return {
+  //         success: false,
+  //         message: "Tagihan sudah lunas",
+  //         error: "Tagihan already paid",
+  //       };
+  //     }
+
+  //     // Calculate payment amount
+  //     const totalTagihan =
+  //       tagihan.jumlah_meter * tagihan.pelanggan.tarif.tarif_perkwh;
+  //     const biayaAdmin = 2500; // Default admin fee
+  //     const totalBayar = totalTagihan + biayaAdmin;
+
+  //     // Get current month-year for bulan_bayar
+  //     const currentDate = new Date();
+  //     const bulanBayar = `${String(currentDate.getMonth() + 1).padStart(
+  //       2,
+  //       "0"
+  //     )}-${currentDate.getFullYear()}`;
+
+  //     // Create pembayaran and update tagihan status in transaction
+  //     const newPembayaran = await prisma.$transaction(async (tx) => {
+  //       // Check if there's already a payment for this tagihan
+  //       const existingPayment = await tx.pembayaran.findFirst({
+  //         where: { id_tagihan },
+  //       });
+
+  //       if (existingPayment) {
+  //         throw new Error("Tagihan sudah memiliki record pembayaran");
+  //       }
+
+  //       const pembayaran = await tx.pembayaran.create({
+  //         data: {
+  //           id_tagihan,
+  //           id_pelanggan: decoded.id,
+  //           id_user: decoded.id, // Customer pays for themselves
+  //           tanggal_pembayaran: new Date(),
+  //           bulan_bayar: bulanBayar,
+  //           biaya_admin: biayaAdmin,
+  //           total_bayar: totalBayar,
+  //           metode_pembayaran,
+  //           status: "Sukses",
+  //         },
+  //         include: {
+  //           tagihan: {
+  //             include: {
+  //               penggunaan: true,
+  //             },
+  //           },
+  //           pelanggan: {
+  //             include: {
+  //               tarif: true,
+  //             },
+  //           },
+  //           user: {
+  //             select: {
+  //               nama_user: true,
+  //             },
+  //           },
+  //         },
+  //       });
+
+  //       // Update tagihan status
+  //       await tx.tagihan.update({
+  //         where: { id_tagihan },
+  //         data: {
+  //           status: "Lunas",
+  //           tanggal_bayar: new Date(),
+  //         },
+  //       });
+
+  //       return pembayaran;
+  //     });
+
+  //     set.status = HTTP_STATUS.CREATED;
+  //     return {
+  //       success: true,
+  //       message: "Pembayaran berhasil diproses",
+  //       data: {
+  //         ...newPembayaran,
+  //         rincian: {
+  //           total_tagihan: totalTagihan,
+  //           biaya_admin: biayaAdmin,
+  //           total_bayar: totalBayar,
+  //           metode_pembayaran,
+  //           status_pembayaran: "Sukses",
+  //         },
+  //       },
+  //     };
+  //   } catch (error) {
+  //     console.error("Customer payment error:", error);
+  //     set.status = HTTP_STATUS.INTERNAL_SERVER_ERROR;
+  //     const err = error as Error;
+  //     return {
+  //       success: false,
+  //       message: err.message || MESSAGES.ERROR.INTERNAL_SERVER_ERROR,
+  //       error: err.message,
+  //     };
+  //   }
+  // })
+
+  .post("/customer/pembayaran", async ({ body, set }) => {
     try {
-      const token = cookie.auth.value;
-
-      if (!token) {
-        set.status = HTTP_STATUS.UNAUTHORIZED;
-        return {
-          success: false,
-          message: "Token tidak ditemukan",
-        };
-      }
-
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-
-      if (decoded.role !== "client") {
-        set.status = HTTP_STATUS.UNAUTHORIZED;
-        return {
-          success: false,
-          message: MESSAGES.ERROR.UNAUTHORIZED,
-        };
-      }
-
       const { id_tagihan, metode_pembayaran = "Transfer Bank" } =
         body as CustomerPaymentRequest;
 
@@ -744,18 +886,13 @@ export const pembayaranController = new Elysia({ prefix: "/api" })
         };
       }
 
-      // Check if tagihan exists, belongs to customer, and not paid yet
+      // Cari tagihan tanpa cek id_pelanggan
       const tagihan = await prisma.tagihan.findFirst({
-        where: {
-          id_tagihan,
-          id_pelanggan: decoded.id, // Ensure customer can only pay their own bill
-        },
+        where: { id_tagihan },
         include: {
           penggunaan: true,
           pelanggan: {
-            include: {
-              tarif: true,
-            },
+            include: { tarif: true },
           },
         },
       });
@@ -764,7 +901,7 @@ export const pembayaranController = new Elysia({ prefix: "/api" })
         set.status = HTTP_STATUS.NOT_FOUND;
         return {
           success: false,
-          message: "Tagihan tidak ditemukan atau bukan milik Anda",
+          message: "Tagihan tidak ditemukan",
           error: "Tagihan not found",
         };
       }
@@ -778,22 +915,20 @@ export const pembayaranController = new Elysia({ prefix: "/api" })
         };
       }
 
-      // Calculate payment amount
+      // Hitung pembayaran
       const totalTagihan =
         tagihan.jumlah_meter * tagihan.pelanggan.tarif.tarif_perkwh;
-      const biayaAdmin = 2500; // Default admin fee
+      const biayaAdmin = 2500;
       const totalBayar = totalTagihan + biayaAdmin;
 
-      // Get current month-year for bulan_bayar
       const currentDate = new Date();
       const bulanBayar = `${String(currentDate.getMonth() + 1).padStart(
         2,
         "0"
       )}-${currentDate.getFullYear()}`;
 
-      // Create pembayaran and update tagihan status in transaction
+      // Proses pembayaran dan update status tagihan
       const newPembayaran = await prisma.$transaction(async (tx) => {
-        // Check if there's already a payment for this tagihan
         const existingPayment = await tx.pembayaran.findFirst({
           where: { id_tagihan },
         });
@@ -805,8 +940,8 @@ export const pembayaranController = new Elysia({ prefix: "/api" })
         const pembayaran = await tx.pembayaran.create({
           data: {
             id_tagihan,
-            id_pelanggan: decoded.id,
-            id_user: decoded.id, // Customer pays for themselves
+            id_pelanggan: tagihan.id_pelanggan,
+            id_user: tagihan.id_pelanggan, // atau null
             tanggal_pembayaran: new Date(),
             bulan_bayar: bulanBayar,
             biaya_admin: biayaAdmin,
@@ -815,25 +950,11 @@ export const pembayaranController = new Elysia({ prefix: "/api" })
             status: "Sukses",
           },
           include: {
-            tagihan: {
-              include: {
-                penggunaan: true,
-              },
-            },
-            pelanggan: {
-              include: {
-                tarif: true,
-              },
-            },
-            user: {
-              select: {
-                nama_user: true,
-              },
-            },
+            tagihan: { include: { penggunaan: true } },
+            pelanggan: { include: { tarif: true } },
           },
         });
 
-        // Update tagihan status
         await tx.tagihan.update({
           where: { id_tagihan },
           data: {
@@ -866,7 +987,7 @@ export const pembayaranController = new Elysia({ prefix: "/api" })
       const err = error as Error;
       return {
         success: false,
-        message: err.message || MESSAGES.ERROR.INTERNAL_SERVER_ERROR,
+        message: err.message || "Terjadi kesalahan server",
         error: err.message,
       };
     }
