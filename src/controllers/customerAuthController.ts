@@ -323,6 +323,64 @@ export const customerController = new Elysia({ prefix: "/api/customer" })
     }
   })
 
+  .put("/profile", async ({ body, cookie, set }) => {
+    try {
+      const token = cookie.auth.value;
+      if (!token) {
+        set.status = HTTP_STATUS.UNAUTHORIZED;
+        return { success: false, message: "Token tidak ditemukan" };
+      }
+
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      if (decoded.role !== "customer") {
+        set.status = HTTP_STATUS.UNAUTHORIZED;
+        return { success: false, message: "Akses ditolak" };
+      }
+
+      const { nama_pelanggan, alamat } = body as {
+        nama_pelanggan?: string;
+        alamat?: string;
+      };
+
+      if (!nama_pelanggan && !alamat) {
+        set.status = HTTP_STATUS.BAD_REQUEST;
+        return { success: false, message: "Tidak ada data yang diupdate" };
+      }
+
+      const updated = await prisma.pelanggan.update({
+        where: { id_pelanggan: decoded.id },
+        data: {
+          ...(nama_pelanggan && { nama_pelanggan }),
+          ...(alamat && { alamat }),
+        },
+        select: {
+          id_pelanggan: true,
+          username: true,
+          nomor_kwh: true,
+          nama_pelanggan: true,
+          alamat: true,
+          tarif: {
+            select: {
+              id_tarif: true,
+              daya: true,
+              tarif_perkwh: true,
+            },
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: "Profil berhasil diupdate",
+        data: updated,
+      };
+    } catch (error) {
+      console.error("Update customer profile error:", error);
+      set.status = HTTP_STATUS.INTERNAL_SERVER_ERROR;
+      return { success: false, message: "Terjadi kesalahan server" };
+    }
+  })
+
   // Get All Customers (untuk admin)
   .get("/list", async ({ cookie, set, query }) => {
     try {
