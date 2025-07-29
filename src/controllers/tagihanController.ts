@@ -283,8 +283,12 @@ export const tagihanController = new Elysia({ prefix: "/api" })
             page = 1,
             limit = 10,
             status,
+            bulan,
+            tahun,
           } = query as PaginationQuery & {
             status?: string;
+            bulan?: string;
+            tahun?: string;
           };
 
           const pageNum = parseInt(page.toString());
@@ -296,6 +300,8 @@ export const tagihanController = new Elysia({ prefix: "/api" })
           };
 
           if (status) where.status = status;
+          if (bulan) where.bulan = bulan;
+          if (tahun) where.tahun = tahun;
 
           const [tagihans, total] = await Promise.all([
             prisma.tagihan.findMany({
